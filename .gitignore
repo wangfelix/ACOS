@@ -1,0 +1,15 @@
+# Xcode
+.DS_Store
+*/build/
+*.derivedData
+*.xcuserstate
+project.xcworkspace/xcuserdata/
+Flow Buddy.xcodeproj/xcuserdata/
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Playground
+*.playground
+

@@ -1,32 +1,30 @@
-//
-//  Flow_BuddyApp.swift
-//  Flow Buddy
-//
-//  Created by Felix Wang on 19.11.25.
-//
-
 import SwiftUI
 import SwiftData
 
 @main
-struct Flow_BuddyApp: App {
+struct FlowBuddyApp: App {
+    @StateObject var appState = AppState.shared
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    
     var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Item.self,
-        ])
+        let schema = Schema([ThoughtItem.self])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
-        do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
-        }
+        return try! ModelContainer(for: schema, configurations: [modelConfiguration])
     }()
-
+    
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            DashboardView()
+                .environmentObject(appState)
         }
         .modelContainer(sharedModelContainer)
+        .commands {
+            CommandMenu("Flow") {
+                Button("Trigger Rapid Capture") {
+                    appState.isCaptureInterfaceOpen.toggle()
+                }
+                .keyboardShortcut("k", modifiers: [.command, .shift])
+            }
+        }
     }
 }
