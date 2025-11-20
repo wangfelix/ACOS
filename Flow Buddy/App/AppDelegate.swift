@@ -1,9 +1,11 @@
 import SwiftUI
 import SwiftData
+import Carbon
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     var bubbleWindow: NSPanel!
     var captureWindow: NSPanel!
+    var hotKeyRef: EventHotKeyRef?
     
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([ThoughtItem.self])
@@ -13,6 +15,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupBubbleWindow()
         setupCaptureWindow()
+        setupGlobalShortcut()
         NotificationCenter.default.addObserver(self, selector: #selector(toggleCapture), name: .toggleCaptureWindow, object: nil)
     }
     
@@ -69,6 +72,31 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             
         captureWindow.contentView = NSHostingView(rootView: contentView)
         captureWindow.center()
+    }
+
+    func setupGlobalShortcut() {
+        let hotKeyID = EventHotKeyID(signature: OSType(0x464C4F57), id: 1) // Signature 'FLOW'
+        
+        var eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
+        
+        let handler: EventHandlerProcPtr = { _, _, _ in
+            DispatchQueue.main.async {
+                AppState.shared.isCaptureInterfaceOpen.toggle()
+            }
+            return noErr
+        }
+        
+        InstallEventHandler(GetApplicationEventTarget(), handler, 1, &eventType, nil, nil)
+        
+        // Register Cmd+Shift+. (Period is 47)
+        let modifiers = UInt32(cmdKey | shiftKey)
+        let keyCode = UInt32(kVK_ANSI_Period)
+        
+        let status = RegisterEventHotKey(keyCode, modifiers, hotKeyID, GetApplicationEventTarget(), 0, &hotKeyRef)
+        
+        if status != noErr {
+            print("Failed to register global hotkey: \(status)")
+        }
     }
     
     // 2. Handle the window resigning key status (losing focus)
