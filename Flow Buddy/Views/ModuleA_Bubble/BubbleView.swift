@@ -34,8 +34,8 @@ struct BubbleView: View {
                     }
                 }
                 .padding()
-                .background(Material.thick) // Better contrast
-                .cornerRadius(12)
+                //.background(Material.thick) // Better contrast
+                .glassEffect(in: RoundedRectangle(cornerRadius: 16))
                 .shadow(radius: 10)
                 .frame(width: 250) // Give it enough width
                 .transition(.move(edge: .trailing).combined(with: .opacity))
