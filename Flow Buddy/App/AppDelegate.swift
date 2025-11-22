@@ -179,6 +179,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             // Save the currently active app before we take focus
             lastActiveApp = NSWorkspace.shared.frontmostApplication
             
+            // Move window to the screen containing the mouse cursor
+            let mouseLocation = NSEvent.mouseLocation
+            if let screen = NSScreen.screens.first(where: { NSMouseInRect(mouseLocation, $0.frame, false) }) {
+                let screenFrame = screen.visibleFrame
+                let windowSize = captureWindow.frame.size
+                let newOriginX = screenFrame.origin.x + (screenFrame.width - windowSize.width) / 2
+                let newOriginY = screenFrame.origin.y + (screenFrame.height - windowSize.height) / 2 + 250
+                captureWindow.setFrameOrigin(NSPoint(x: newOriginX, y: newOriginY))
+            }
+            
             captureWindow.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
         } else {
