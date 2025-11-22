@@ -9,6 +9,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var statusBarItem: NSStatusItem!
     var hotKeyRef: EventHotKeyRef?
     
+    // Track the previously active application to restore focus
+    var lastActiveApp: NSRunningApplication?
+    
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([ThoughtItem.self])
         return try! ModelContainer(for: schema, configurations: [ModelConfiguration(schema: schema)])
@@ -30,7 +33,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func setupDashboardWindow() {
         dashboardWindow = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1000, height: 700),
-            // Added .fullSizeContentView for modern sidebar look
             styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -87,7 +89,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         if let window = notification.object as? NSWindow, window == dashboardWindow {
             // Hide Dock icon when dashboard closes
-            // Use async to allow close animation to complete smoothly
             DispatchQueue.main.async {
                 NSApp.setActivationPolicy(.accessory)
             }
@@ -95,7 +96,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
     
     func setupBubbleWindow() {
-        // Bubble uses standard NSPanel because it doesn't need keyboard focus
         bubbleWindow = NSPanel(
             contentRect: NSRect(x: 0, y: 0, width: 400, height: 200),
             styleMask: [.nonactivatingPanel, .hudWindow],
@@ -113,7 +113,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             
         bubbleWindow.contentView = NSHostingView(rootView: contentView)
         
-        // Position Bottom Right
         if let screen = NSScreen.main {
             let x = screen.visibleFrame.maxX - 380
             let y = screen.visibleFrame.minY + 50
@@ -123,7 +122,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
     
     func setupCaptureWindow() {
-        // Capture Window uses CUSTOM FloatingPanel to allow typing
         captureWindow = FloatingPanel(
             contentRect: NSRect(x: 0, y: 0, width: 750, height: 200),
             styleMask: [.borderless, .nonactivatingPanel, .hudWindow],
@@ -131,14 +129,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             defer: false
         )
         
-        captureWindow.level = .floating // Floats above everything
+        captureWindow.level = .floating
         captureWindow.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         captureWindow.backgroundColor = .clear
         captureWindow.isOpaque = false
         captureWindow.isFloatingPanel = true
         captureWindow.hasShadow = false
         
-        // Enable automatic closing on outside clicks
         captureWindow.hidesOnDeactivate = true
         
         let contentView = RapidCaptureView()
@@ -174,17 +171,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
     
     func applicationDidResignActive(_ notification: Notification) {
-         if AppState.shared.isCaptureInterfaceOpen {
-             AppState.shared.isCaptureInterfaceOpen = false
-         }
+        // No-op
     }
     
     @objc func toggleCapture() {
         if AppState.shared.isCaptureInterfaceOpen {
+            // Save the currently active app before we take focus
+            lastActiveApp = NSWorkspace.shared.frontmostApplication
+            
             captureWindow.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
         } else {
-            captureWindow.orderOut(nil)
+            closeCaptureWindow()
         }
     }
     
@@ -193,6 +191,20 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         
         if AppState.shared.isCaptureInterfaceOpen {
              AppState.shared.isCaptureInterfaceOpen = false
+        }
+    }
+    
+    // MARK: - Focus Management Helper
+    
+    func closeCaptureWindow() {
+        captureWindow.orderOut(nil)
+        
+        // If we are currently the active app (meaning user hit Escape or Return),
+        // we MUST manually return focus to the previous app.
+        // If we are NOT the active app (meaning user clicked outside),
+        // the system has already transferred focus, so we do nothing.
+        if NSApp.isActive {
+            lastActiveApp?.activate(options: .activateIgnoringOtherApps)
         }
     }
 }

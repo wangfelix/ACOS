@@ -60,7 +60,7 @@ struct DashboardView: View {
         } detail: {
             switch selection {
             case .analytics:
-                AnalyticsDetailView(appState: appState)
+                AnalyticsDetailView(appState: appState).background(Color.blue.opacity(0.3))
             case .thought(let item):
                 ThoughtDetailView(item: item)
             case nil:
