@@ -106,6 +106,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         bubbleWindow.backgroundColor = .clear
         bubbleWindow.isOpaque = false
         bubbleWindow.hasShadow = false
+        bubbleWindow.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         
         let contentView = BubbleView()
             .environmentObject(AppState.shared)
