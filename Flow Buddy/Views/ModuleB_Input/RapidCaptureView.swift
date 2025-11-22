@@ -39,6 +39,7 @@ struct RapidCaptureView: View {
         .background(
             Button("") {
                 appState.isCaptureInterfaceOpen = false
+                inputText = ""
             }
             .keyboardShortcut(.escape, modifiers: [])
             .hidden()
