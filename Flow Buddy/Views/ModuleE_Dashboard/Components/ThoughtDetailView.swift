@@ -2,6 +2,9 @@ import SwiftUI
 
 struct ThoughtDetailView: View {
     let item: ThoughtItem
+    @State private var isAnalyzing = false
+    @State private var analysisResult: String?
+    private let researchService = BackgroundResearchService()
     
     var body: some View {
         ScrollView {
@@ -31,9 +34,37 @@ struct ThoughtDetailView: View {
                         .font(.headline)
                     
                     Button("Generate Report") {
-                        // Placeholder for agent action
+                        Task {
+                            isAnalyzing = true
+                            do {
+                                let result = try await researchService.performResearch(for: item.text)
+                                print("Research Result: \(result)")
+                                analysisResult = result
+                            } catch {
+                                print("Research Failed: \(error)")
+                                analysisResult = "Failed to generate report: \(error.localizedDescription)"
+                            }
+                            isAnalyzing = false
+                        }
                     }
+                    .disabled(isAnalyzing)
                     .buttonStyle(.bordered)
+                }
+                
+                if isAnalyzing {
+                    ProgressView("Analyzing...")
+                        .padding()
+                }
+                
+                if let result = analysisResult {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Research Report")
+                            .font(.headline)
+                        Text(result)
+                            .padding()
+                            .background(Color.gray.opacity(0.1))
+                            .cornerRadius(12)
+                    }
                 }
                 
                 Spacer()
