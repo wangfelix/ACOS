@@ -17,6 +17,16 @@ class AppState: ObservableObject {
             }
         }
     }
+    @Published var monitoringInterval: TimeInterval = UserDefaults.standard.double(forKey: "monitoringInterval") == 0 ? 10 : UserDefaults.standard.double(forKey: "monitoringInterval") {
+        didSet {
+            UserDefaults.standard.set(monitoringInterval, forKey: "monitoringInterval")
+            // Restart timer with new interval if monitoring is active
+            if isDistractionDetectionEnabled {
+                startMonitoring()
+            }
+        }
+    }
+    
     @Published var currentDistraction: String? = nil
     
     private var distractionTimer: Timer?
@@ -26,12 +36,15 @@ class AppState: ObservableObject {
     static let shared = AppState() // Singleton access
     
     init() {
-        // Start periodic context check every 10 seconds
+        // Start periodic context check based on stored interval
         startMonitoring()
     }
     
     func startMonitoring() {
-        distractionTimer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
+        // Invalidate existing timer
+        distractionTimer?.invalidate()
+        
+        distractionTimer = Timer.scheduledTimer(withTimeInterval: monitoringInterval, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
                 await self?.checkContext()
             }
