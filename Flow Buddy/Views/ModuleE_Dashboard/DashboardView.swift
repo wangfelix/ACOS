@@ -1,6 +1,16 @@
 import SwiftUI
 import SwiftData
 
+enum AppMode {
+    case dashboard
+    case settings
+}
+
+enum SettingsSelection: Hashable {
+    case userData
+    case appConfig
+}
+
 // Define selection type for the Sidebar
 enum DashboardSelection: Hashable {
     case analytics
@@ -30,46 +40,91 @@ struct DashboardView: View {
     @Query(sort: \ThoughtItem.timestamp, order: .reverse) var thoughts: [ThoughtItem]
     
     @State private var selection: DashboardSelection? = .analytics
+    @State private var settingsSelection: SettingsSelection? = .userData
+    @State private var currentMode: AppMode = .dashboard
     
     var body: some View {
         NavigationSplitView {
-            List(selection: $selection) {
-                Section("Analytics") {
-                    NavigationLink(value: DashboardSelection.analytics) {
-                        AnalyticsSidebarRow(appState: appState)
+            if currentMode == .dashboard {
+                List(selection: $selection) {
+                    Section("Analytics") {
+                        NavigationLink(value: DashboardSelection.analytics) {
+                            AnalyticsSidebarRow(appState: appState)
+                        }
                     }
-                }
-                
-                Section("Inbox") {
-                    ForEach(thoughts) { item in
-                        NavigationLink(value: DashboardSelection.thought(item)) {
-                            ThoughtSidebarRow(item: item)
+                    
+                    Section("Inbox") {
+                        ForEach(thoughts) { item in
+                            NavigationLink(value: DashboardSelection.thought(item)) {
+                                ThoughtSidebarRow(item: item)
+                            }
                         }
                     }
                 }
+                .listStyle(.sidebar)
+                .frame(minWidth: 250)
+                .navigationTitle("Flow Buddy")
+                .toolbar {
+                    ToolbarItem {
+                        Button(action: { appState.isCaptureInterfaceOpen.toggle() }) {
+                            Label("Add", systemImage: "plus")
+                        }
+                    }
+                }
+            } else {
+                List(selection: $settingsSelection) {
+                    Section("Settings") {
+                        NavigationLink(value: SettingsSelection.userData) {
+                            Label("User Data", systemImage: "person.circle")
+                        }
+                        NavigationLink(value: SettingsSelection.appConfig) {
+                            Label("App Config", systemImage: "gearshape.2")
+                        }
+                    }
+                }
+                .listStyle(.sidebar)
+                .frame(minWidth: 250)
+                .navigationTitle("Settings")
             }
-            .listStyle(.sidebar) // This gives the proper transparent sidebar look
-            .navigationTitle("Flow Buddy")
-            .toolbar {
-                ToolbarItem {
-                    Button(action: { appState.isCaptureInterfaceOpen.toggle() }) {
-                        Label("Add", systemImage: "plus")
+        } detail: {
+            Group {
+                if currentMode == .dashboard {
+                    switch selection {
+                    case .analytics:
+                        AnalyticsDetailView(appState: appState)
+                            .background(Color.blue.opacity(0.3))
+                    case .thought(let item):
+                        ThoughtDetailView(item: item)
+                    case nil:
+                        Text("Select an item in Flow Buddy")
+                            .foregroundColor(.secondary)
+                    }
+                } else {
+                    switch settingsSelection {
+                    case .userData:
+                        UserDataView()
+                    case .appConfig:
+                        AppConfigView(appState: appState)
+                    case nil:
+                        Text("Select a setting")
+                            .foregroundColor(.secondary)
                     }
                 }
             }
-        } detail: {
-            switch selection {
-            case .analytics:
-                AnalyticsDetailView(appState: appState).background(Color.blue.opacity(0.3))
-            case .thought(let item):
-                ThoughtDetailView(item: item)
-            case nil:
-                Text("Select an item to view details")
-                    .foregroundColor(.secondary)
+            .toolbar {
+                ToolbarItem {
+                    Spacer()
+                }
+                 ToolbarItem {
+                     Button(action: {
+                         withAnimation {
+                             currentMode = (currentMode == .dashboard) ? .settings : .dashboard
+                         }
+                     }) {
+                         Label("Settings", systemImage: (currentMode == .dashboard) ? "gear" : "xmark.circle")
+                     }
+                 }
             }
         }
     }
 }
-
-// MARK: - Sidebar Components
-// Components have been moved to the Components folder
