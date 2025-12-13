@@ -1,6 +1,13 @@
 import SwiftData
 import Foundation
 
+struct InferenceResponse: Codable {
+    let topic: String
+    let summary: String
+    let details: String
+    let actionItems: [String]
+}
+
 @Model
 class ThoughtItem {
     var id: UUID
@@ -14,6 +21,18 @@ class ThoughtItem {
     }
     
     var hasBeenOpened: Bool = false
+    
+    var inferenceReportData: Data?
+    
+    var inferenceReport: InferenceResponse? {
+        get {
+            guard let data = inferenceReportData else { return nil }
+            return try? JSONDecoder().decode(InferenceResponse.self, from: data)
+        }
+        set {
+            inferenceReportData = try? JSONEncoder().encode(newValue)
+        }
+    }
     
     init(text: String, category: ThoughtCategory, timestamp: Date = Date(), hasBeenOpened: Bool = false) {
         self.id = UUID()
