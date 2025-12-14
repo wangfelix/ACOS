@@ -2,10 +2,15 @@ import SwiftUI
 import SwiftData
 import Carbon
 
-class AppDelegate: NSObject, NSApplicationDelegate {
+class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var bubbleWindow: NSPanel!
     var captureWindow: NSPanel!
+    var dashboardWindow: NSWindow!
+    var statusBarItem: NSStatusItem!
     var hotKeyRef: EventHotKeyRef?
+    
+    // Track the previously active application to restore focus
+    var lastActiveApp: NSRunningApplication?
     
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([ThoughtItem.self])
@@ -13,16 +18,86 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }()
     
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Start as accessory app (no dock icon)
+        NSApp.setActivationPolicy(.accessory)
+        
         setupBubbleWindow()
         setupCaptureWindow()
+        setupDashboardWindow()
+        setupStatusBar()
         setupGlobalShortcut()
+        
         NotificationCenter.default.addObserver(self, selector: #selector(toggleCapture), name: .toggleCaptureWindow, object: nil)
     }
     
+    func setupDashboardWindow() {
+        dashboardWindow = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 1000, height: 700),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+        dashboardWindow.title = "Flow Buddy Dashboard"
+        dashboardWindow.center()
+        dashboardWindow.isReleasedWhenClosed = false
+        
+        // Toolbar configuration for unified look
+        dashboardWindow.titlebarAppearsTransparent = true
+
+        dashboardWindow.toolbarStyle = .unified
+        
+        dashboardWindow.delegate = self
+        
+        let contentView = DashboardView()
+            .environmentObject(AppState.shared)
+            .modelContainer(sharedModelContainer)
+            
+        dashboardWindow.contentView = NSHostingView(rootView: contentView)
+    }
+    
+    func setupStatusBar() {
+        statusBarItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        if let button = statusBarItem.button {
+            button.image = NSImage(systemSymbolName: "wind", accessibilityDescription: "Flow Buddy")
+        }
+        
+        let menu = NSMenu()
+        menu.addItem(NSMenuItem(title: "Open Dashboard", action: #selector(openDashboard), keyEquivalent: "d"))
+        menu.addItem(NSMenuItem.separator())
+        menu.addItem(NSMenuItem(title: "Quit", action: #selector(quitApp), keyEquivalent: "q"))
+        statusBarItem.menu = menu
+    }
+    
+    @objc func openDashboard() {
+        // Show Dock icon
+        NSApp.setActivationPolicy(.regular)
+        
+        // Show Window
+        dashboardWindow.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+    
+    @objc func quitApp() {
+        NSApplication.shared.terminate(nil)
+    }
+    
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        openDashboard()
+        return true
+    }
+    
+    func windowWillClose(_ notification: Notification) {
+        if let window = notification.object as? NSWindow, window == dashboardWindow {
+            // Hide Dock icon when dashboard closes
+            DispatchQueue.main.async {
+                NSApp.setActivationPolicy(.accessory)
+            }
+        }
+    }
+    
     func setupBubbleWindow() {
-        // Bubble uses standard NSPanel because it doesn't need keyboard focus
         bubbleWindow = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 400, height: 200), // Increased size for "Intervention Box"
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 200),
             styleMask: [.nonactivatingPanel, .hudWindow],
             backing: .buffered,
             defer: false
@@ -31,6 +106,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         bubbleWindow.backgroundColor = .clear
         bubbleWindow.isOpaque = false
         bubbleWindow.hasShadow = false
+        bubbleWindow.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         
         let contentView = BubbleView()
             .environmentObject(AppState.shared)
@@ -38,7 +114,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             
         bubbleWindow.contentView = NSHostingView(rootView: contentView)
         
-        // Position Bottom Right
         if let screen = NSScreen.main {
             let x = screen.visibleFrame.maxX - 380
             let y = screen.visibleFrame.minY + 50
@@ -48,22 +123,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     func setupCaptureWindow() {
-        // Capture Window uses CUSTOM FloatingPanel to allow typing
         captureWindow = FloatingPanel(
             contentRect: NSRect(x: 0, y: 0, width: 750, height: 200),
-            styleMask: [.borderless, .nonactivatingPanel, .hudWindow], // .nonactivatingPanel keeps it floating but subclass overrides key status
+            styleMask: [.borderless, .nonactivatingPanel, .hudWindow],
             backing: .buffered,
             defer: false
         )
         
-        captureWindow.level = .floating // Floats above everything
+        captureWindow.level = .floating
         captureWindow.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         captureWindow.backgroundColor = .clear
         captureWindow.isOpaque = false
         captureWindow.isFloatingPanel = true
         captureWindow.hasShadow = false
         
-        // 1. Enable automatic closing on outside clicks
         captureWindow.hidesOnDeactivate = true
         
         let contentView = RapidCaptureView()
@@ -88,9 +161,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         InstallEventHandler(GetApplicationEventTarget(), handler, 1, &eventType, nil, nil)
         
-        // Register Cmd+Shift+. (Period is 47)
         let modifiers = UInt32(cmdKey | shiftKey)
-        let keyCode = UInt32(kVK_ANSI_Period)
+        let keyCode = UInt32(kVK_ANSI_Period) 
         
         let status = RegisterEventHotKey(keyCode, modifiers, hotKeyID, GetApplicationEventTarget(), 0, &hotKeyRef)
         
@@ -99,32 +171,51 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
     
-    // 2. Handle the window resigning key status (losing focus)
     func applicationDidResignActive(_ notification: Notification) {
-         // If the app loses focus (user clicks another app), close the capture window state
-         if AppState.shared.isCaptureInterfaceOpen {
-             AppState.shared.isCaptureInterfaceOpen = false
-         }
+        // No-op
     }
     
     @objc func toggleCapture() {
         if AppState.shared.isCaptureInterfaceOpen {
+            // Save the currently active app before we take focus
+            lastActiveApp = NSWorkspace.shared.frontmostApplication
+            
+            // Move window to the screen containing the mouse cursor
+            let mouseLocation = NSEvent.mouseLocation
+            if let screen = NSScreen.screens.first(where: { NSMouseInRect(mouseLocation, $0.frame, false) }) {
+                let screenFrame = screen.visibleFrame
+                let windowSize = captureWindow.frame.size
+                let newOriginX = screenFrame.origin.x + (screenFrame.width - windowSize.width) / 2
+                let newOriginY = screenFrame.origin.y + (screenFrame.height - windowSize.height) / 2 + 250
+                captureWindow.setFrameOrigin(NSPoint(x: newOriginX, y: newOriginY))
+            }
+            
             captureWindow.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true) // Forces app to front so you can type
+            NSApp.activate(ignoringOtherApps: true)
         } else {
-            captureWindow.orderOut(nil)
+            closeCaptureWindow()
         }
     }
     
-    // 3. Specific delegate method for the window itself
     func windowDidResignKey(_ notification: Notification) {
         guard let window = notification.object as? NSWindow, window == captureWindow else { return }
         
-        // When capture window loses focus, close it
-        // We must wrap this in a check to ensure we aren't just switching focus within the app
         if AppState.shared.isCaptureInterfaceOpen {
              AppState.shared.isCaptureInterfaceOpen = false
         }
     }
+    
+    // MARK: - Focus Management Helper
+    
+    func closeCaptureWindow() {
+        captureWindow.orderOut(nil)
+        
+        // If we are currently the active app (meaning user hit Escape or Return),
+        // we MUST manually return focus to the previous app.
+        // If we are NOT the active app (meaning user clicked outside),
+        // the system has already transferred focus, so we do nothing.
+        if NSApp.isActive {
+            lastActiveApp?.activate(options: .activateIgnoringOtherApps)
+        }
+    }
 }
-

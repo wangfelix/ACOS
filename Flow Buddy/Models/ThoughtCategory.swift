@@ -1,6 +1,6 @@
 import Foundation
 
-enum ThoughtCategory: String, Codable {
-    case research = "Research", reminder = "Reminder", todo = "To-Do"
+enum ThoughtCategory: String, Codable, CaseIterable {
+    case auto = "Auto", research = "Research", reminder = "Reminder"
 }
 
