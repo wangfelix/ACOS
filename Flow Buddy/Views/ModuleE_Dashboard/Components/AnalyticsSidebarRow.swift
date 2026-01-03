@@ -6,17 +6,17 @@ struct AnalyticsSidebarRow: View {
     var body: some View {
         HStack {
             VStack(alignment: .leading) {
-                Text("Flow Score").font(.caption)
-                Text("\(Int(appState.flowScore))").font(.title2).bold().foregroundColor(.cyan)
+                Text("Session").font(.caption)
+                Text(appState.isSessionActive ? "Active" : "Overview")
+                    .font(.title2)
+                    .bold()
+                    .foregroundColor(appState.isSessionActive ? .green : .secondary)
             }
             Spacer()
-            // Simple graph
-            HStack(alignment: .bottom, spacing: 3) {
-                ForEach(0..<8) { _ in
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(Color.cyan.opacity(0.6))
-                        .frame(width: 4, height: CGFloat.random(in: 10...20))
-                }
+            if appState.isSessionActive {
+                Circle()
+                    .fill(Color.green)
+                    .frame(width: 10, height: 10)
             }
         }
         .padding(.vertical, 4)

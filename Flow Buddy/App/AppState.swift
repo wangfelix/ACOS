@@ -4,7 +4,6 @@ import AppKit
 import ScreenCaptureKit
 
 class AppState: ObservableObject {
-    @Published var flowScore: Double = 85.0
     @Published var isCaptureInterfaceOpen: Bool = false {
         didSet { NotificationCenter.default.post(name: .toggleCaptureWindow, object: nil) }
     }
@@ -35,6 +34,11 @@ class AppState: ObservableObject {
     
     @Published var currentDistraction: String? = nil
     
+    // Session state
+    @Published var isSessionActive: Bool = false
+    @Published var sessionStartTime: Date? = nil
+    @Published var sessionEndTime: Date? = nil
+    
     private var distractionTimer: Timer?
     private let analysisService = ScreenAnalysisService()
     private var isAnalyzing = false
@@ -54,6 +58,31 @@ class AppState: ObservableObject {
             Task { @MainActor [weak self] in
                 await self?.checkContext()
             }
+        }
+    }
+    
+    // MARK: - Session Management
+    
+    func startSession() {
+        withAnimation {
+            isSessionActive = true
+            sessionStartTime = Date()
+            sessionEndTime = nil
+        }
+    }
+    
+    func stopSession() {
+        withAnimation {
+            isSessionActive = false
+            sessionEndTime = Date()
+        }
+    }
+    
+    func finishSession() {
+        withAnimation {
+            isSessionActive = false
+            sessionStartTime = nil
+            sessionEndTime = nil
         }
     }
     
@@ -104,4 +133,5 @@ class AppState: ObservableObject {
 
 extension Notification.Name {
     static let toggleCaptureWindow = Notification.Name("toggleCaptureWindow")
+    static let openDashboard = Notification.Name("openDashboard")
 }

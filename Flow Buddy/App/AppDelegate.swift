@@ -28,6 +28,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         setupGlobalShortcut()
         
         NotificationCenter.default.addObserver(self, selector: #selector(toggleCapture), name: .toggleCaptureWindow, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(openDashboard), name: .openDashboard, object: nil)
     }
     
     func setupDashboardWindow() {
@@ -200,8 +201,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func windowDidResignKey(_ notification: Notification) {
         guard let window = notification.object as? NSWindow, window == captureWindow else { return }
         
-        if AppState.shared.isCaptureInterfaceOpen {
-             AppState.shared.isCaptureInterfaceOpen = false
+        // Small delay to allow button clicks to be processed before closing
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            if AppState.shared.isCaptureInterfaceOpen {
+                AppState.shared.isCaptureInterfaceOpen = false
+            }
         }
     }
     

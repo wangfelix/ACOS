@@ -14,54 +14,71 @@ struct RapidCaptureView: View {
             // Main Input Capsule
             HStack(spacing: 12) {
                 Image(systemName: "pencil.and.scribble")
-                    .font(.title2)
+                    .font(.title)
                     .foregroundColor(.secondary)
                 
                 TextField("Offload thought...", text: $inputText)
                     .textFieldStyle(.plain)
-                    .font(.title2)
+                    .font(.title)
                     .focused($isFocused) // Binds focus to state
                     .onSubmit { submitThought() }
-                
-                Button(action: { }) {
-                    Image(systemName: "mic.fill")
-                }
-                .buttonStyle(.plain)
-                .foregroundColor(.secondary)
             }
-            .padding(20)
+            .padding(16)
             .glassEffect(in: Capsule())
             .shadow(radius: 10)
             .frame(width: 600)
             
-            // Category Dropdown Pill
-            Menu {
-                ForEach(ThoughtCategory.allCases, id: \.self) { category in
-                    Button {
-                        selectedCategory = category
-                    } label: {
-                        if selectedCategory == category {
-                            Label(category.rawValue, systemImage: "checkmark")
-                        } else {
-                            Text(category.rawValue)
-                        }
+            HStack(spacing: 8) {
+                Button {
+                    print("Dashboard button tapped!")
+                    // Close capture interface first
+                    AppState.shared.isCaptureInterfaceOpen = false
+                    
+                    // Use notification to open dashboard (same pattern as toggleCaptureWindow)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                        NotificationCenter.default.post(name: .openDashboard, object: nil)
                     }
+                } label: {
+                    Label("Open Dashboard", systemImage: "rectangle.on.rectangle")
+                        .labelStyle(.titleAndIcon)
                 }
-            } label: {
-                HStack(spacing: 6) {
-                    Text(selectedCategory.rawValue)
-                        .fontWeight(.medium)
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(.caption)
-                }
+                .buttonStyle(.plain)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
                 .glassEffect(in: Capsule())
                 .shadow(radius: 5)
                 .contentShape(Capsule())
+                
+                // Category Dropdown Pill
+                Menu {
+                    ForEach(ThoughtCategory.allCases, id: \.self) { category in
+                        Button {
+                            selectedCategory = category
+                        } label: {
+                            if selectedCategory == category {
+                                Label(category.rawValue, systemImage: "checkmark")
+                            } else {
+                                Text(category.rawValue)
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Text(selectedCategory.rawValue)
+                            .fontWeight(.medium)
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.caption)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .glassEffect(in: Capsule())
+                    .shadow(radius: 5)
+                    .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .frame(alignment: .trailing)
             }
-            .buttonStyle(.plain)
-            .frame(width: 140, alignment: .trailing)
+            
         }
         .onAppear {
             // Force focus when window appears

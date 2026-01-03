@@ -44,7 +44,7 @@ struct BubbleView: View {
             
             // The Bubble Icon
             // We use a ZStack in the background to layer "Physical Blur" + "Pigment"
-            Image(systemName: "face.dashed")
+            Image(systemName: "brain.head.profile")
                 .font(.system(size: 24))
                 .foregroundStyle(.primary.opacity(0.8)) // Slightly softer icon
                 .padding(16)
