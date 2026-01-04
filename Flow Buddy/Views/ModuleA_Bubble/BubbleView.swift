@@ -36,7 +36,7 @@ struct BubbleView: View {
                 }
                 .padding()
                 //.background(Material.thick) // Better contrast
-                .glassEffect(in: RoundedRectangle(cornerRadius: 20))
+                .glassEffectWithFallback(in: RoundedRectangle(cornerRadius: 20))
                 .shadow(radius: 10)
                 .frame(width: 250) // Give it enough width
                 .transition(.move(edge: .trailing).combined(with: .opacity))
@@ -54,7 +54,7 @@ struct BubbleView: View {
                         // LAYER 1: The Heavy Lifting (Blur & Refraction)
                         // We use a Shape (Circle) with glassEffect so it clips correctly
                         Circle()
-                            .glassEffect()
+                            .circleGlassEffectWithFallback()
                         
                         // LAYER 2: The "Pigment" (The Fix)
                         // We overlay a low-opacity solid color.

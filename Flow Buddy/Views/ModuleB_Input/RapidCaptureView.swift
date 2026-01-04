@@ -24,7 +24,7 @@ struct RapidCaptureView: View {
                     .onSubmit { submitThought() }
             }
             .padding(16)
-            .glassEffect(in: Capsule())
+            .glassEffectWithFallback(in: Capsule())
             .shadow(radius: 10)
             .frame(width: 600)
             
@@ -45,7 +45,7 @@ struct RapidCaptureView: View {
                 .buttonStyle(.plain)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
-                .glassEffect(in: Capsule())
+                .glassEffectWithFallback(in: Capsule())
                 .shadow(radius: 5)
                 .contentShape(Capsule())
                 
@@ -71,7 +71,7 @@ struct RapidCaptureView: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
-                    .glassEffect(in: Capsule())
+                    .glassEffectWithFallback(in: Capsule())
                     .shadow(radius: 5)
                     .contentShape(Capsule())
                 }
